@@ -54,10 +54,36 @@ function formatHours(min: number) {
   return (min / 60).toFixed(2).replace(".", ",");
 }
 
+function parseMitarbeiterText(text: string): Mitarbeiter[] {
+  const list: Mitarbeiter[] = [];
+
+  text.split("\n").forEach((line) => {
+    const clean = line.trim();
+    if (!clean || !clean.includes("/")) return;
+
+    const parts = clean.split("/");
+    const personalnummer = parts.pop()?.trim() || "";
+    const name = parts.join("/").trim();
+
+    if (!name || !personalnummer) return;
+
+    list.push({ name, personalnummer });
+  });
+
+  const unique = new Map<string, Mitarbeiter>();
+  list.forEach((m) => {
+    unique.set(`${m.name.toLowerCase()}-${m.personalnummer}`, m);
+  });
+
+  return Array.from(unique.values());
+}
+
 export default function Page() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [mitarbeiter, setMitarbeiter] = useState<Mitarbeiter[]>([]);
   const [showMitarbeiterListe, setShowMitarbeiterListe] = useState(false);
+  const [showTextImport, setShowTextImport] = useState(false);
+  const [importText, setImportText] = useState("");
 
   const [rows, setRows] = useState<Row[]>(
     Array.from({ length: ROWS }, () => ({
@@ -119,6 +145,20 @@ export default function Page() {
       : { ...copy[i], vorlage: "" };
 
     setRows(copy);
+  }
+
+  function importMitarbeiterAusText() {
+    const parsed = parseMitarbeiterText(importText);
+
+    if (parsed.length === 0) {
+      alert("Keine Mitarbeiter erkannt. Format: Name / Personalnummer");
+      return;
+    }
+
+    saveMitarbeiter(parsed);
+    setImportText("");
+    setShowTextImport(false);
+    alert(`${parsed.length} Mitarbeiter importiert`);
   }
 
   function exportExcel() {
@@ -206,7 +246,8 @@ export default function Page() {
 
         .actions button,
         .import-button,
-        .mitarbeiter-row button {
+        .mitarbeiter-row button,
+        .text-import-box button {
           padding: 8px 14px;
           border: 1px solid #000;
           background: #fff;
@@ -219,6 +260,35 @@ export default function Page() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
+        }
+
+        .text-import-box {
+          width: 760px;
+          margin: 0 auto 12px auto;
+          border: 1px solid #000;
+          padding: 12px;
+          background: #fff;
+        }
+
+        .text-import-box h3 {
+          margin: 0 0 8px 0;
+          font-size: 16px;
+        }
+
+        .text-import-box textarea {
+          width: 100%;
+          height: 220px;
+          border: 1px solid #000;
+          padding: 8px;
+          font-size: 13px;
+          font-family: Arial, Helvetica, sans-serif;
+          resize: vertical;
+        }
+
+        .text-import-actions {
+          display: flex;
+          gap: 10px;
+          margin-top: 10px;
         }
 
         .mitarbeiter-box {
@@ -487,7 +557,8 @@ export default function Page() {
 
         @media print {
           .actions,
-          .mitarbeiter-box {
+          .mitarbeiter-box,
+          .text-import-box {
             display: none;
           }
 
@@ -547,6 +618,10 @@ export default function Page() {
           />
         </label>
 
+        <button onClick={() => setShowTextImport(!showTextImport)}>
+          Mitarbeiter aus Text importieren
+        </button>
+
         <button
           onClick={() => {
             localStorage.removeItem("loggedIn");
@@ -557,12 +632,34 @@ export default function Page() {
         </button>
       </div>
 
+      {showTextImport && (
+        <div className="text-import-box">
+          <h3>Mitarbeiter aus Text importieren</h3>
+          <textarea
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            placeholder={"Name / Personalnummer\nMax Mustermann / 12345\nAli Beispiel / 67890"}
+          />
+          <div className="text-import-actions">
+            <button onClick={importMitarbeiterAusText}>Importieren</button>
+            <button
+              onClick={() => {
+                setImportText("");
+                setShowTextImport(false);
+              }}
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
+
       {showMitarbeiterListe && (
         <div className="mitarbeiter-box">
           <h3>Mitarbeiterliste</h3>
           {mitarbeiter.length === 0 && <p>Keine Mitarbeiter angelegt.</p>}
           {mitarbeiter.map((m) => (
-            <div className="mitarbeiter-row" key={m.name}>
+            <div className="mitarbeiter-row" key={`${m.name}-${m.personalnummer}`}>
               <span>{m.name}</span>
               <span>{m.personalnummer}</span>
               <button onClick={() => deleteMitarbeiter(m.name)}>Löschen</button>
@@ -715,7 +812,7 @@ export default function Page() {
                     <select value={r.name} onChange={(e) => selectMitarbeiter(i, e.target.value)}>
                       <option value=""></option>
                       {mitarbeiter.map((m) => (
-                        <option key={m.name} value={m.name}>
+                        <option key={`${m.name}-${m.personalnummer}`} value={m.name}>
                           {m.name}
                         </option>
                       ))}
