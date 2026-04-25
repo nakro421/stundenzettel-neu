@@ -275,6 +275,7 @@ export default function Page() {
           background: #fff;
           font-family: Arial, Helvetica, sans-serif;
           color: #000;
+          overflow-x: auto;
         }
 
         .actions {
@@ -356,12 +357,12 @@ export default function Page() {
         }
 
         .sheet {
-          width: 1120px;
-          height: 790px;
+          width: 100%;
+          max-width: 1290px;
           margin: auto;
           background: #fff;
           padding: 18px;
-          overflow: hidden;
+          overflow-x: auto;
         }
 
         .top {
@@ -369,6 +370,8 @@ export default function Page() {
           grid-template-columns: 275px 520px 285px;
           gap: 18px;
           align-items: start;
+          width: 1116px;
+          margin: 0 auto;
         }
 
         .field-row {
@@ -527,12 +530,12 @@ export default function Page() {
         }
 
         table {
-          width: 100%;
+          width: 1245px;
+          min-width: 1245px;
           border-collapse: collapse;
           table-layout: fixed;
-          margin-top: 12px;
-          border: 1px solid #2f80ed;
-          box-shadow: inset -1px 0 0 #2f80ed;
+          margin: 12px auto 0 auto;
+          border: 2px solid #2f80ed;
         }
 
         th,
@@ -544,7 +547,7 @@ export default function Page() {
 
         th:last-child,
         td:last-child {
-          border-right: 1px solid #2f80ed !important;
+          border-right: 2px solid #2f80ed !important;
         }
 
         th {
@@ -605,13 +608,25 @@ export default function Page() {
 
           body {
             background: #fff;
+            overflow: visible;
           }
 
           .sheet {
             margin: 0;
             padding: 0;
             width: 100%;
-            height: auto;
+            max-width: none;
+            overflow: visible;
+          }
+
+          .top {
+            width: 100%;
+            margin: 0;
+          }
+
+          table {
+            width: 100%;
+            min-width: 0;
           }
         }
       `}</style>
