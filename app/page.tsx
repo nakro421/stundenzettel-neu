@@ -279,9 +279,9 @@ export default function Page() {
 
         .pf-logo-row {
           display: grid;
-          grid-template-columns: 170px 1fr;
+          grid-template-columns: 160px 1fr;
           align-items: center;
-          gap: 10px;
+          gap: 14px;
           margin-bottom: 2px;
         }
 
@@ -292,16 +292,17 @@ export default function Page() {
         }
 
         .pf-logo img {
-          width: 145px;
+          width: 150px;
           height: auto;
-          opacity: 0.95;
+          opacity: 1;
+          display: block;
         }
 
         .pf-text {
-          text-align: center;
-          font-size: 9px;
-          font-weight: 700;
-          line-height: 12px;
+          text-align: left;
+          font-size: 10px;
+          font-weight: 800;
+          line-height: 13px;
         }
 
         .title {
@@ -345,8 +346,10 @@ export default function Page() {
 
         .logo-sub {
           font-size: 14px;
-          font-weight: 800;
-          color: #2f80ed;
+          font-weight: 900;
+          color: #006fe6;
+          opacity: 1;
+          letter-spacing: 0.4px;
         }
 
         .logo-address {
@@ -590,7 +593,7 @@ export default function Page() {
           <div>
             <div className="pf-logo-row">
               <div className="pf-logo">
-                <img src="/pf-logo.png" alt="P&F Sicherung GmbH Logo" />
+                <img src="/image001.png" alt="P&F Sicherung GmbH Logo" />
               </div>
 
               <div className="pf-text">
