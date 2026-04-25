@@ -55,6 +55,7 @@ function formatHours(min: number) {
 }
 
 export default function Page() {
+const [loggedIn, setLoggedIn] = useState(false);
   const [mitarbeiter, setMitarbeiter] = useState<Mitarbeiter[]>([]);
   const [showMitarbeiterListe, setShowMitarbeiterListe] = useState(false);
 
@@ -153,7 +154,28 @@ export default function Page() {
     XLSX.writeFile(wb, "stundenzettel.xlsx");
   }
 
+  if (!loggedIn) {
   return (
+    <main style={{display:"flex",justifyContent:"center",alignItems:"center",height:"100vh"}}>
+      <div style={{border:"1px solid #000", padding:20}}>
+        <h2>Login</h2>
+        <input
+          type="password"
+          placeholder="Passwort"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              if ((e.target as HTMLInputElement).value === "1234") {
+                setLoggedIn(true);
+              } else {
+                alert("Falsches Passwort");
+              }
+            }
+          }}
+        />
+      </div>
+    </main>
+  );
+}return (
     <main>
       <style>{`
         @page { size: A4 landscape; margin: 8mm; }
