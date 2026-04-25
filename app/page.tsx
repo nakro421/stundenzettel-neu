@@ -450,6 +450,33 @@ const [loggedIn, setLoggedIn] = useState(false);
         <button onClick={() => setShowMitarbeiterListe(!showMitarbeiterListe)}>
           Mitarbeiterliste anzeigen
         </button>
+        <button onClick={() => {
+  const blob = new Blob([JSON.stringify(mitarbeiter)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "mitarbeiter.json";
+  a.click();
+}}>
+  Mitarbeiter exportieren
+</button>
+
+<input
+  type="file"
+  accept=".json"
+  onChange={(e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const data = JSON.parse(reader.result as string);
+      setMitarbeiter(data);
+      localStorage.setItem("mitarbeiter", JSON.stringify(data));
+    };
+    reader.readAsText(file);
+  }}
+/>
       </div>
 
       {showMitarbeiterListe && (
