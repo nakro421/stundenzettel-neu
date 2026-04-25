@@ -164,7 +164,7 @@ const [loggedIn, setLoggedIn] = useState(false);
           placeholder="Passwort"
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              if ((e.target as HTMLInputElement).value === "1234") {
+              if ((e.target as HTMLInputElement).value === "36833") {
                 setLoggedIn(true);
               } else {
                 alert("Falsches Passwort");
