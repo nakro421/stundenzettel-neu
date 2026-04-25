@@ -2,6 +2,14 @@
 
 import React, { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
+import { auth, db } from "../lib/firebase";
+import {
+  collection,
+  getDocs,
+  doc,
+  setDoc,
+  deleteDoc,
+} from "firebase/firestore";
 
 const FUNKTIONEN = ["Sakra", "Sipo", "Baustellensakra", "Bahnerder", "Bediener", "SAS", "BÜP", "HIP", "Flapo", "ZMP"];
 
@@ -54,6 +62,14 @@ function formatHours(min: number) {
   return (min / 60).toFixed(2).replace(".", ",");
 }
 
+function makeMitarbeiterId(m: Mitarbeiter) {
+  return `${m.name}-${m.personalnummer}`
+    .replaceAll("/", "-")
+    .replaceAll(" ", "_")
+    .replaceAll(".", "")
+    .replaceAll(",", "");
+}
+
 function parseMitarbeiterText(text: string): Mitarbeiter[] {
   const list: Mitarbeiter[] = [];
 
@@ -99,17 +115,35 @@ export default function Page() {
   );
 
   useEffect(() => {
-    const saved = localStorage.getItem("mitarbeiter");
-    if (saved) setMitarbeiter(JSON.parse(saved));
+    console.log("Firebase verbunden:", auth, db);
+
+    async function loadMitarbeiter() {
+      const snapshot = await getDocs(collection(db, "Mitarbeiter"));
+      const liste = snapshot.docs
+        .map((d) => d.data() as Mitarbeiter)
+        .filter((m) => m.name && m.personalnummer);
+
+      setMitarbeiter(liste);
+      localStorage.setItem("mitarbeiter", JSON.stringify(liste));
+    }
+
+    loadMitarbeiter();
 
     if (localStorage.getItem("loggedIn") === "true") {
       setLoggedIn(true);
     }
   }, []);
 
-  function saveMitarbeiter(list: Mitarbeiter[]) {
+  async function saveMitarbeiter(list: Mitarbeiter[]) {
     setMitarbeiter(list);
     localStorage.setItem("mitarbeiter", JSON.stringify(list));
+
+    for (const m of list) {
+      await setDoc(doc(db, "Mitarbeiter", makeMitarbeiterId(m)), {
+        name: m.name,
+        personalnummer: m.personalnummer,
+      });
+    }
   }
 
   function addMitarbeiter() {
@@ -119,8 +153,15 @@ export default function Page() {
     saveMitarbeiter([...mitarbeiter, { name, personalnummer }]);
   }
 
-  function deleteMitarbeiter(name: string) {
-    saveMitarbeiter(mitarbeiter.filter((m) => m.name !== name));
+  async function deleteMitarbeiter(name: string) {
+    const m = mitarbeiter.find((x) => x.name === name);
+    if (!m) return;
+
+    await deleteDoc(doc(db, "Mitarbeiter", makeMitarbeiterId(m)));
+
+    const neueListe = mitarbeiter.filter((x) => x.name !== name);
+    setMitarbeiter(neueListe);
+    localStorage.setItem("mitarbeiter", JSON.stringify(neueListe));
   }
 
   function update(i: number, field: keyof Row, value: string) {
@@ -158,7 +199,7 @@ export default function Page() {
     saveMitarbeiter(parsed);
     setImportText("");
     setShowTextImport(false);
-    alert(`${parsed.length} Mitarbeiter importiert`);
+    alert(`${parsed.length} Mitarbeiter importiert und online gespeichert`);
   }
 
   function exportExcel() {
@@ -609,9 +650,8 @@ export default function Page() {
               const reader = new FileReader();
               reader.onload = () => {
                 const data = JSON.parse(reader.result as string);
-                setMitarbeiter(data);
-                localStorage.setItem("mitarbeiter", JSON.stringify(data));
-                alert("Mitarbeiterliste importiert");
+                saveMitarbeiter(data);
+                alert("Mitarbeiterliste importiert und online gespeichert");
               };
               reader.readAsText(file);
             }}
