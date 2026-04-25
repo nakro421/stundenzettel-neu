@@ -55,7 +55,7 @@ function formatHours(min: number) {
 }
 
 export default function Page() {
-const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
   const [mitarbeiter, setMitarbeiter] = useState<Mitarbeiter[]>([]);
   const [showMitarbeiterListe, setShowMitarbeiterListe] = useState(false);
 
@@ -75,6 +75,10 @@ const [loggedIn, setLoggedIn] = useState(false);
   useEffect(() => {
     const saved = localStorage.getItem("mitarbeiter");
     if (saved) setMitarbeiter(JSON.parse(saved));
+
+    if (localStorage.getItem("loggedIn") === "true") {
+      setLoggedIn(true);
+    }
   }, []);
 
   function saveMitarbeiter(list: Mitarbeiter[]) {
@@ -155,34 +159,35 @@ const [loggedIn, setLoggedIn] = useState(false);
   }
 
   if (!loggedIn) {
-  return (
-    <main style={{display:"flex",justifyContent:"center",alignItems:"center",height:"100vh"}}>
-      <div style={{border:"1px solid #000", padding:20}}>
-        <h2>Login</h2>
-        <input
-          type="password"
-          placeholder="Passwort"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              if ((e.target as HTMLInputElement).value === "36833") {
-                setLoggedIn(true);
-              } else {
-                alert("Falsches Passwort");
+    return (
+      <main style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <div style={{ border: "1px solid #000", padding: 20, background: "#fff" }}>
+          <h2>Login</h2>
+          <input
+            type="password"
+            placeholder="Passwort"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if ((e.target as HTMLInputElement).value === "36833") {
+                  localStorage.setItem("loggedIn", "true");
+                  setLoggedIn(true);
+                } else {
+                  alert("Falsches Passwort");
+                }
               }
-            }
-          }}
-        />
-      </div>
-    </main>
-  );
-}return (
+            }}
+          />
+        </div>
+      </main>
+    );
+  }
+
+  return (
     <main>
       <style>{`
         @page { size: A4 landscape; margin: 8mm; }
 
-        * {
-          box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
           margin: 0;
@@ -200,12 +205,20 @@ const [loggedIn, setLoggedIn] = useState(false);
         }
 
         .actions button,
+        .import-button,
         .mitarbeiter-row button {
           padding: 8px 14px;
           border: 1px solid #000;
           background: #fff;
           cursor: pointer;
           font-weight: 700;
+          font-size: 14px;
+        }
+
+        .import-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .mitarbeiter-box {
@@ -229,10 +242,6 @@ const [loggedIn, setLoggedIn] = useState(false);
           border-bottom: 1px solid #ccc;
           padding: 4px 0;
           font-size: 13px;
-        }
-
-        .mitarbeiter-row button {
-          padding: 4px 8px;
         }
 
         .sheet {
@@ -268,11 +277,39 @@ const [loggedIn, setLoggedIn] = useState(false);
           color: #000;
         }
 
+        .pf-logo-row {
+          display: grid;
+          grid-template-columns: 170px 1fr;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 2px;
+        }
+
+        .pf-logo {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+
+        .pf-logo img {
+          width: 145px;
+          height: auto;
+          opacity: 0.95;
+        }
+
+        .pf-text {
+          text-align: center;
+          font-size: 9px;
+          font-weight: 700;
+          line-height: 12px;
+        }
+
         .title {
           text-align: center;
           font-size: 22px;
           font-weight: 900;
           color: #2f80ed;
+          margin-top: 2px;
         }
 
         .nr-input {
@@ -284,18 +321,39 @@ const [loggedIn, setLoggedIn] = useState(false);
           color: #000;
         }
 
+        .logo-wrap {
+          display: grid;
+          grid-template-columns: 70px 1fr;
+          align-items: center;
+          gap: 8px;
+          margin-top: 2px;
+        }
+
+        .logo-icon {
+          width: 58px;
+          height: 45px;
+          background: #2f80ed;
+          clip-path: polygon(0 100%, 0 35%, 100% 100%);
+        }
+
         .logo-main {
           font-size: 36px;
           font-weight: 900;
           color: #000;
-          line-height: 36px;
+          line-height: 34px;
         }
 
         .logo-sub {
           font-size: 14px;
           font-weight: 800;
           color: #2f80ed;
-          margin-bottom: 12px;
+        }
+
+        .logo-address {
+          font-size: 9px;
+          font-weight: 700;
+          line-height: 12px;
+          margin-top: 4px;
         }
 
         .center-row {
@@ -450,33 +508,50 @@ const [loggedIn, setLoggedIn] = useState(false);
         <button onClick={() => setShowMitarbeiterListe(!showMitarbeiterListe)}>
           Mitarbeiterliste anzeigen
         </button>
-        <button onClick={() => {
-  const blob = new Blob([JSON.stringify(mitarbeiter)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "mitarbeiter.json";
-  a.click();
-}}>
-  Mitarbeiter exportieren
-</button>
 
-<input
-  type="file"
-  accept=".json"
-  onChange={(e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+        <button
+          onClick={() => {
+            const blob = new Blob([JSON.stringify(mitarbeiter)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "mitarbeiter.json";
+            a.click();
+          }}
+        >
+          Mitarbeiter exportieren
+        </button>
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const data = JSON.parse(reader.result as string);
-      setMitarbeiter(data);
-      localStorage.setItem("mitarbeiter", JSON.stringify(data));
-    };
-    reader.readAsText(file);
-  }}
-/>
+        <label className="import-button">
+          Mitarbeiter importieren
+          <input
+            type="file"
+            accept=".json"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+
+              const reader = new FileReader();
+              reader.onload = () => {
+                const data = JSON.parse(reader.result as string);
+                setMitarbeiter(data);
+                localStorage.setItem("mitarbeiter", JSON.stringify(data));
+                alert("Mitarbeiterliste importiert");
+              };
+              reader.readAsText(file);
+            }}
+          />
+        </label>
+
+        <button
+          onClick={() => {
+            localStorage.removeItem("loggedIn");
+            setLoggedIn(false);
+          }}
+        >
+          Abmelden
+        </button>
       </div>
 
       {showMitarbeiterListe && (
@@ -496,7 +571,15 @@ const [loggedIn, setLoggedIn] = useState(false);
       <section className="sheet">
         <div className="top">
           <div>
-            {["ARGE", "Auftraggeber", "Auftraggebende Stelle", "Baustelle", "Tag der Ausführung/Datum"].map((x) => (
+            <div className="field-row">
+              ARGE
+              <input
+                className="fill-line"
+                defaultValue="Stölting Rail & Service GmbH / P&F Sicherung GmbH"
+              />
+            </div>
+
+            {["Auftraggeber", "Auftraggebende Stelle", "Baustelle", "Tag der Ausführung/Datum"].map((x) => (
               <div className="field-row" key={x}>
                 {x}
                 <input className="fill-line" />
@@ -505,13 +588,40 @@ const [loggedIn, setLoggedIn] = useState(false);
           </div>
 
           <div>
+            <div className="pf-logo-row">
+              <div className="pf-logo">
+                <img src="/pf-logo.png" alt="P&F Sicherung GmbH Logo" />
+              </div>
+
+              <div className="pf-text">
+                P&F Sicherung GmbH
+                <br />
+                Lagerstraße 49 | 64807 Dieburg
+                <br />
+                info@pf-sicherung.de
+                <br />
+                Tel.: 0 60 71 - 3 91 32 50
+              </div>
+            </div>
+
             <div className="title">
               Stundenlohnzettel Nr.
               <input className="nr-input" />
             </div>
 
-            <div className="logo-main">Stölting</div>
-            <div className="logo-sub">SERVICE GROUP</div>
+            <div className="logo-wrap">
+              <div className="logo-icon"></div>
+              <div>
+                <div className="logo-main">Stölting</div>
+                <div className="logo-sub">SERVICE GROUP</div>
+              </div>
+            </div>
+
+            <div className="logo-address">
+              Johannes-Rau-Allee 15-19 · 45889 Gelsenkirchen
+              <br />
+              Tel. 02 09 / 36 111 99 33 · Fax 02 09 / 51 30 78 98
+            </div>
 
             <div className="center-row">
               <span>Bestellschein</span>
