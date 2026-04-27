@@ -670,17 +670,22 @@ export default function Page() {
         }
 
         .timecell {
+          display: flex;
+          flex-direction: column;
           height: 100%;
         }
 
         .timecell select {
-          display: none;
+          display: block;
+          height: 13px;
+          font-size: 8px;
+          padding-left: 3px;
+          padding-right: 18px;
         }
 
         .timecell input {
-          height: 100%;
-          font-size: 10px;
-          line-height: 26px;
+          height: 13px;
+          font-size: 9px;
           padding: 0 3px;
         }
 
@@ -735,6 +740,10 @@ export default function Page() {
           input::-webkit-calendar-picker-indicator {
             display: none !important;
             opacity: 0 !important;
+          }
+
+          .timecell select {
+            display: none !important;
           }
 
           * {
