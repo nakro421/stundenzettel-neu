@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { auth, db } from "../lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
@@ -94,6 +94,12 @@ export default function Page() {
   const [showTextImport, setShowTextImport] = useState(false);
   const [importText, setImportText] = useState("");
 
+  const [drawing, setDrawing] = useState(false);
+  const [drawColor, setDrawColor] = useState("red");
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const sheetRef = useRef<HTMLElement | null>(null);
+  const isDrawingRef = useRef(false);
+
   const [rows, setRows] = useState<Row[]>(
     Array.from({ length: ROWS }, () => ({
       datum: "",
@@ -126,6 +132,22 @@ export default function Page() {
       setLoggedIn(true);
     }
   }, []);
+
+  useEffect(() => {
+    function resizeCanvas() {
+      const canvas = canvasRef.current;
+      const sheet = sheetRef.current;
+      if (!canvas || !sheet) return;
+
+      const rect = sheet.getBoundingClientRect();
+      canvas.width = Math.round(rect.width);
+      canvas.height = Math.round(rect.height);
+    }
+
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+    return () => window.removeEventListener("resize", resizeCanvas);
+  }, [loggedIn]);
 
   async function saveMitarbeiter(list: Mitarbeiter[]) {
     setMitarbeiter(list);
@@ -232,6 +254,57 @@ export default function Page() {
     XLSX.writeFile(wb, "stundenzettel.xlsx");
   }
 
+  function getCanvasPos(e: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * canvas.width,
+      y: ((e.clientY - rect.top) / rect.height) * canvas.height,
+    };
+  }
+
+  function startDraw(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawing) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+
+    isDrawingRef.current = true;
+    const pos = getCanvasPos(e);
+
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    ctx.strokeStyle = drawColor;
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }
+
+  function moveDraw(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawing || !isDrawingRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+
+    const pos = getCanvasPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  }
+
+  function stopDraw() {
+    isDrawingRef.current = false;
+  }
+
+  function clearDrawing() {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
   if (!loggedIn) {
     return (
       <main style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
@@ -280,6 +353,7 @@ export default function Page() {
         }
 
         .actions button,
+        .actions select,
         .import-button,
         .mitarbeiter-row button,
         .text-import-box button {
@@ -289,6 +363,8 @@ export default function Page() {
           cursor: pointer;
           font-weight: 700;
           font-size: 14px;
+          height: auto;
+          width: auto;
         }
 
         .import-button {
@@ -356,6 +432,22 @@ export default function Page() {
           background: #fff;
           padding: 18px;
           overflow-x: auto;
+          position: relative;
+        }
+
+        .draw-canvas {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 20;
+          pointer-events: none;
+          touch-action: none;
+        }
+
+        .draw-canvas.active {
+          pointer-events: auto;
+          cursor: crosshair;
         }
 
         .top {
@@ -365,6 +457,8 @@ export default function Page() {
           align-items: start;
           width: 1116px;
           margin: 0 auto;
+          position: relative;
+          z-index: 1;
         }
 
         .field-row {
@@ -524,6 +618,8 @@ export default function Page() {
           table-layout: fixed;
           margin: 12px auto 0 auto;
           border: 2px solid #2f80ed;
+          position: relative;
+          z-index: 1;
         }
 
         th,
@@ -618,29 +714,35 @@ export default function Page() {
           }
 
           select {
-            -webkit-appearance: none;
-            appearance: none;
+            -webkit-appearance: none !important;
+            appearance: none !important;
             background: transparent !important;
           }
 
           select::-ms-expand {
-            display: none;
+            display: none !important;
           }
 
           input[type="date"],
           input[type="time"] {
-            -webkit-appearance: none;
-            appearance: none;
+            -webkit-appearance: none !important;
+            appearance: none !important;
           }
 
           input[type="date"]::-webkit-calendar-picker-indicator,
-          input[type="time"]::-webkit-calendar-picker-indicator {
-            display: none;
-            opacity: 0;
+          input[type="time"]::-webkit-calendar-picker-indicator,
+          input::-webkit-calendar-picker-indicator {
+            display: none !important;
+            opacity: 0 !important;
           }
 
           .timecell select {
             display: none !important;
+          }
+
+          * {
+            outline: none !important;
+            box-shadow: none !important;
           }
         }
       `}</style>
@@ -691,6 +793,20 @@ export default function Page() {
           Mitarbeiter aus Text importieren
         </button>
 
+        <button onClick={() => setDrawing(!drawing)}>
+          ✏️ Stift {drawing ? "AN" : "AUS"}
+        </button>
+
+        <select value={drawColor} onChange={(e) => setDrawColor(e.target.value)}>
+          <option value="red">Rot</option>
+          <option value="blue">Blau</option>
+          <option value="black">Schwarz</option>
+          <option value="green">Grün</option>
+          <option value="orange">Orange</option>
+        </select>
+
+        <button onClick={clearDrawing}>🧽 Zeichnung löschen</button>
+
         <button
           onClick={() => {
             localStorage.removeItem("loggedIn");
@@ -737,7 +853,16 @@ export default function Page() {
         </div>
       )}
 
-      <section className="sheet">
+      <section className="sheet" ref={sheetRef}>
+        <canvas
+          ref={canvasRef}
+          className={`draw-canvas ${drawing ? "active" : ""}`}
+          onPointerDown={startDraw}
+          onPointerMove={moveDraw}
+          onPointerUp={stopDraw}
+          onPointerLeave={stopDraw}
+        />
+
         <div className="top">
           <div>
             <div className="field-row">
