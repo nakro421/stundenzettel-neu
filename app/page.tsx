@@ -581,6 +581,9 @@ export default function Page() {
           height: 40px;
           width: 78px;
           margin-top: 8px;
+          padding: 4px;
+          font-size: 10px;
+          font-weight: 700;
         }
 
         .right-signs {
@@ -667,20 +670,18 @@ export default function Page() {
         }
 
         .timecell {
-          display: flex;
-          flex-direction: column;
           height: 100%;
         }
 
         .timecell select {
-          height: 13px;
-          font-size: 8px;
-          padding-right: 18px;
+          display: none;
         }
 
         .timecell input {
-          height: 13px;
-          font-size: 9px;
+          height: 100%;
+          font-size: 10px;
+          line-height: 26px;
+          padding: 0 3px;
         }
 
         @media print {
@@ -736,10 +737,6 @@ export default function Page() {
             opacity: 0 !important;
           }
 
-          .timecell select {
-            display: none !important;
-          }
-
           * {
             outline: none !important;
             box-shadow: none !important;
@@ -751,9 +748,7 @@ export default function Page() {
         <button onClick={() => window.print()}>PDF speichern / Drucken</button>
         <button onClick={exportExcel}>Excel exportieren</button>
         <button onClick={addMitarbeiter}>Mitarbeiter hinzufügen</button>
-        <button onClick={() => setShowMitarbeiterListe(!showMitarbeiterListe)}>
-          Mitarbeiterliste anzeigen
-        </button>
+        <button onClick={() => setShowMitarbeiterListe(!showMitarbeiterListe)}>Mitarbeiterliste anzeigen</button>
 
         <button
           onClick={() => {
@@ -789,13 +784,9 @@ export default function Page() {
           />
         </label>
 
-        <button onClick={() => setShowTextImport(!showTextImport)}>
-          Mitarbeiter aus Text importieren
-        </button>
+        <button onClick={() => setShowTextImport(!showTextImport)}>Mitarbeiter aus Text importieren</button>
 
-        <button onClick={() => setDrawing(!drawing)}>
-          ✏️ Stift {drawing ? "AN" : "AUS"}
-        </button>
+        <button onClick={() => setDrawing(!drawing)}>✏️ Stift {drawing ? "AN" : "AUS"}</button>
 
         <select value={drawColor} onChange={(e) => setDrawColor(e.target.value)}>
           <option value="red">Rot</option>
@@ -925,7 +916,7 @@ export default function Page() {
             <div className="center-row">
               <span>Ort/Datum</span>
               <span></span>
-              <input className="fill-line" />
+              <input className="fill-line" defaultValue="A.Öztav" />
               <span></span>
               <input className="fill-line" />
             </div>
@@ -936,7 +927,7 @@ export default function Page() {
               Interne
               <br />
               Bearbeitungs-Nr.
-              <input className="internal-box" />
+              <input className="internal-box" defaultValue="920025" />
             </div>
 
             <div className="right-signs">
