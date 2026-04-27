@@ -3,13 +3,7 @@
 import React, { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { auth, db } from "../lib/firebase";
-import {
-  collection,
-  getDocs,
-  doc,
-  setDoc,
-  deleteDoc,
-} from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
 const FUNKTIONEN = ["Sakra", "Sipo", "Baustellensakra", "Bahnerder", "Bediener", "SAS", "BÜP", "HIP", "Flapo", "ZMP"];
 
@@ -82,7 +76,6 @@ function parseMitarbeiterText(text: string): Mitarbeiter[] {
     const name = parts.join("/").trim();
 
     if (!name || !personalnummer) return;
-
     list.push({ name, personalnummer });
   });
 
@@ -391,6 +384,18 @@ export default function Page() {
           color: #000;
         }
 
+        .date-line {
+          width: 100%;
+          border: none;
+          border-bottom: 1px solid #2f80ed;
+          outline: none;
+          background: transparent;
+          height: 18px;
+          color: #000;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
         .pf-logo-row {
           display: grid;
           grid-template-columns: 160px 1fr;
@@ -417,23 +422,6 @@ export default function Page() {
           font-size: 10px;
           font-weight: 800;
           line-height: 13px;
-        }
-
-        .title {
-          text-align: center;
-          font-size: 22px;
-          font-weight: 900;
-          color: #2f80ed;
-          margin-top: 2px;
-        }
-
-        .nr-input {
-          border: none;
-          border-bottom: 2px solid #2f80ed;
-          width: 80px;
-          margin-left: 8px;
-          outline: none;
-          color: #000;
         }
 
         .logo-wrap {
@@ -603,7 +591,7 @@ export default function Page() {
           .actions,
           .mitarbeiter-box,
           .text-import-box {
-            display: none;
+            display: none !important;
           }
 
           body {
@@ -627,6 +615,32 @@ export default function Page() {
           table {
             width: 100%;
             min-width: 0;
+          }
+
+          select {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent !important;
+          }
+
+          select::-ms-expand {
+            display: none;
+          }
+
+          input[type="date"],
+          input[type="time"] {
+            -webkit-appearance: none;
+            appearance: none;
+          }
+
+          input[type="date"]::-webkit-calendar-picker-indicator,
+          input[type="time"]::-webkit-calendar-picker-indicator {
+            display: none;
+            opacity: 0;
+          }
+
+          .timecell select {
+            display: none !important;
           }
         }
       `}</style>
@@ -728,18 +742,28 @@ export default function Page() {
           <div>
             <div className="field-row">
               ARGE
-              <input
-                className="fill-line"
-                defaultValue="Stölting Rail & Service GmbH / P&F Sicherung GmbH"
-              />
+              <input className="fill-line" defaultValue="Stölting Rail & Service GmbH / P&F Sicherung GmbH" />
             </div>
 
-            {["Auftraggeber", "Auftraggebende Stelle", "Baustelle", "Tag der Ausführung/Datum"].map((x) => (
-              <div className="field-row" key={x}>
-                {x}
-                <input className="fill-line" />
-              </div>
-            ))}
+            <div className="field-row">
+              Auftraggeber
+              <input className="fill-line" defaultValue="DB InfraGO AG" />
+            </div>
+
+            <div className="field-row">
+              Auftraggebende Stelle
+              <input className="fill-line" defaultValue="Region Mitte" />
+            </div>
+
+            <div className="field-row">
+              Baustelle
+              <input className="fill-line" defaultValue="Knoten F. Stadion 2. BS 2024-2026" />
+            </div>
+
+            <div className="field-row">
+              Tag der Ausführung/Datum
+              <input className="date-line" type="date" />
+            </div>
           </div>
 
           <div>
@@ -759,11 +783,6 @@ export default function Page() {
               </div>
             </div>
 
-            <div className="title">
-              Stundenlohnzettel Nr.
-              <input className="nr-input" />
-            </div>
-
             <div className="logo-wrap">
               <div className="logo-icon"></div>
               <div>
@@ -776,22 +795,6 @@ export default function Page() {
               Johannes-Rau-Allee 15-19 · 45889 Gelsenkirchen
               <br />
               Tel. 02 09 / 36 111 99 33 · Fax 02 09 / 51 30 78 98
-            </div>
-
-            <div className="center-row">
-              <span>Bestellschein</span>
-              <span>Nr.</span>
-              <input className="fill-line" />
-              <span>vom</span>
-              <input className="fill-line" />
-            </div>
-
-            <div className="center-row">
-              <span>Vertrag</span>
-              <span>Nr.</span>
-              <input className="fill-line" />
-              <span>vom</span>
-              <input className="fill-line" />
             </div>
 
             <div className="center-row">
