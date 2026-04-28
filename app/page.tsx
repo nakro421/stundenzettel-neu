@@ -56,6 +56,13 @@ function formatHours(min: number) {
   return (min / 60).toFixed(2).replace(".", ",");
 }
 
+function formatDateDE(date: string) {
+  if (!date) return "";
+  const [year, month, day] = date.split("-");
+  if (!year || !month || !day) return date;
+  return `${day}.${month}.${year}`;
+}
+
 function makeMitarbeiterId(m: Mitarbeiter) {
   return `${m.name}-${m.personalnummer}`
     .replaceAll("/", "-")
@@ -224,7 +231,7 @@ export default function Page() {
       const netto = Math.max(0, brutto - pause);
 
       return {
-        Datum: r.datum,
+        Datum: formatDateDE(r.datum),
         Name: r.name,
         Personalnummer: r.personalnummer,
         Funktion: r.bez,
@@ -338,39 +345,118 @@ export default function Page() {
 
         body {
           margin: 0;
-          background: #fff;
+          background: #f4f7fb;
           font-family: Arial, Helvetica, sans-serif;
           color: #000;
           overflow-x: auto;
         }
 
-        .actions {
+        .toolbar {
+          max-width: 1290px;
+          margin: 8px auto 14px auto;
+          padding: 12px;
+          background: #ffffff;
+          border: 1px solid #d9e2ef;
+          border-radius: 14px;
+          box-shadow: 0 4px 18px rgba(0,0,0,0.08);
           display: flex;
-          gap: 10px;
+          gap: 12px;
           justify-content: center;
-          padding: 10px;
+          align-items: stretch;
           flex-wrap: wrap;
         }
 
-        .actions button,
-        .actions select,
-        .import-button,
-        .mitarbeiter-row button,
-        .text-import-box button {
-          padding: 8px 14px;
-          border: 1px solid #000;
-          background: #fff;
-          cursor: pointer;
-          font-weight: 700;
-          font-size: 14px;
-          height: auto;
-          width: auto;
+        .tool-group {
+          display: flex;
+          gap: 10px;
+          align-items: stretch;
+          padding-right: 12px;
+          border-right: 1px solid #d9e2ef;
         }
 
-        .import-button {
-          display: inline-flex;
+        .tool-group:last-child {
+          border-right: none;
+          padding-right: 0;
+        }
+
+        .tool-button,
+        .tool-label,
+        .tool-select {
+          width: 120px;
+          min-height: 76px;
+          border: 1px solid #d6dee9;
+          background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+          border-radius: 10px;
+          box-shadow: 0 2px 7px rgba(0,0,0,0.08);
+          cursor: pointer;
+          font-weight: 800;
+          font-size: 12px;
+          color: #000;
+          display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
+          text-align: center;
+          gap: 6px;
+          padding: 8px;
+          transition: 0.15s ease;
+          line-height: 15px;
+        }
+
+        .tool-button:hover,
+        .tool-label:hover,
+        .tool-select:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 5px 14px rgba(0,0,0,0.12);
+          border-color: #8bbcff;
+        }
+
+        .tool-button:active,
+        .tool-label:active {
+          transform: translateY(0);
+          box-shadow: 0 2px 7px rgba(0,0,0,0.08);
+        }
+
+        .tool-icon {
+          font-size: 26px;
+          line-height: 26px;
+        }
+
+        .tool-text {
+          display: block;
+        }
+
+        .tool-button.primary {
+          border-color: #b8d7ff;
+        }
+
+        .tool-button.danger {
+          border-color: #ffd2d2;
+        }
+
+        .tool-button.draw-active {
+          background: linear-gradient(180deg, #eaf3ff 0%, #d8ebff 100%);
+          border-color: #2f80ed;
+        }
+
+        .tool-select {
+          appearance: none;
+          -webkit-appearance: none;
+          padding: 8px;
+        }
+
+        .tool-select-wrap {
+          position: relative;
+        }
+
+        .tool-select-wrap::after {
+          content: "⌄";
+          position: absolute;
+          right: 12px;
+          top: 29px;
+          font-size: 18px;
+          pointer-events: none;
+          font-weight: 900;
         }
 
         .text-import-box {
@@ -402,6 +488,15 @@ export default function Page() {
           margin-top: 10px;
         }
 
+        .text-import-box button {
+          padding: 8px 14px;
+          border: 1px solid #000;
+          background: #fff;
+          cursor: pointer;
+          font-weight: 700;
+          font-size: 14px;
+        }
+
         .mitarbeiter-box {
           width: 520px;
           margin: 0 auto 10px auto;
@@ -425,6 +520,14 @@ export default function Page() {
           font-size: 13px;
         }
 
+        .mitarbeiter-row button {
+          padding: 6px 10px;
+          border: 1px solid #000;
+          background: #fff;
+          cursor: pointer;
+          font-weight: 700;
+        }
+
         .sheet {
           width: 100%;
           max-width: 1290px;
@@ -433,6 +536,7 @@ export default function Page() {
           padding: 18px;
           overflow-x: auto;
           position: relative;
+          border-radius: 10px;
         }
 
         .draw-canvas {
@@ -690,7 +794,7 @@ export default function Page() {
         }
 
         @media print {
-          .actions,
+          .toolbar,
           .mitarbeiter-box,
           .text-import-box {
             display: none !important;
@@ -707,6 +811,7 @@ export default function Page() {
             width: 100%;
             max-width: none;
             overflow: visible;
+            border-radius: 0;
           }
 
           .top {
@@ -753,68 +858,107 @@ export default function Page() {
         }
       `}</style>
 
-      <div className="actions">
-        <button onClick={() => window.print()}>PDF speichern / Drucken</button>
-        <button onClick={exportExcel}>Excel exportieren</button>
-        <button onClick={addMitarbeiter}>Mitarbeiter hinzufügen</button>
-        <button onClick={() => setShowMitarbeiterListe(!showMitarbeiterListe)}>Mitarbeiterliste anzeigen</button>
+      <div className="toolbar">
+        <div className="tool-group">
+          <button className="tool-button primary" onClick={() => window.print()}>
+            <span className="tool-icon">🖨️</span>
+            <span className="tool-text">PDF speichern / Drucken</span>
+          </button>
 
-        <button
-          onClick={() => {
-            const blob = new Blob([JSON.stringify(mitarbeiter)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "mitarbeiter.json";
-            a.click();
-          }}
-        >
-          Mitarbeiter exportieren
-        </button>
+          <button className="tool-button primary" onClick={exportExcel}>
+            <span className="tool-icon">📗</span>
+            <span className="tool-text">Excel exportieren</span>
+          </button>
+        </div>
 
-        <label className="import-button">
-          Mitarbeiter importieren
-          <input
-            type="file"
-            accept=".json"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
+        <div className="tool-group">
+          <button className="tool-button" onClick={addMitarbeiter}>
+            <span className="tool-icon">👤➕</span>
+            <span className="tool-text">Mitarbeiter hinzufügen</span>
+          </button>
 
-              const reader = new FileReader();
-              reader.onload = () => {
-                const data = JSON.parse(reader.result as string);
-                saveMitarbeiter(data);
-                alert("Mitarbeiterliste importiert und online gespeichert");
-              };
-              reader.readAsText(file);
+          <button className="tool-button" onClick={() => setShowMitarbeiterListe(!showMitarbeiterListe)}>
+            <span className="tool-icon">📋</span>
+            <span className="tool-text">Mitarbeiterliste anzeigen</span>
+          </button>
+
+          <button
+            className="tool-button"
+            onClick={() => {
+              const blob = new Blob([JSON.stringify(mitarbeiter)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "mitarbeiter.json";
+              a.click();
             }}
-          />
-        </label>
+          >
+            <span className="tool-icon">⬆️</span>
+            <span className="tool-text">Mitarbeiter exportieren</span>
+          </button>
 
-        <button onClick={() => setShowTextImport(!showTextImport)}>Mitarbeiter aus Text importieren</button>
+          <label className="tool-label">
+            <span className="tool-icon">⬇️</span>
+            <span className="tool-text">Mitarbeiter importieren</span>
+            <input
+              type="file"
+              accept=".json"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
 
-        <button onClick={() => setDrawing(!drawing)}>✏️ Stift {drawing ? "AN" : "AUS"}</button>
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const data = JSON.parse(reader.result as string);
+                  saveMitarbeiter(data);
+                  alert("Mitarbeiterliste importiert und online gespeichert");
+                };
+                reader.readAsText(file);
+              }}
+            />
+          </label>
 
-        <select value={drawColor} onChange={(e) => setDrawColor(e.target.value)}>
-          <option value="red">Rot</option>
-          <option value="blue">Blau</option>
-          <option value="black">Schwarz</option>
-          <option value="green">Grün</option>
-          <option value="orange">Orange</option>
-        </select>
+          <button className="tool-button" onClick={() => setShowTextImport(!showTextImport)}>
+            <span className="tool-icon">📄</span>
+            <span className="tool-text">Mitarbeiter aus Text importieren</span>
+          </button>
+        </div>
 
-        <button onClick={clearDrawing}>🧽 Zeichnung löschen</button>
+        <div className="tool-group">
+          <button className={`tool-button ${drawing ? "draw-active" : ""}`} onClick={() => setDrawing(!drawing)}>
+            <span className="tool-icon">✏️</span>
+            <span className="tool-text">Stift {drawing ? "AN" : "AUS"}</span>
+          </button>
 
-        <button
-          onClick={() => {
-            localStorage.removeItem("loggedIn");
-            setLoggedIn(false);
-          }}
-        >
-          Abmelden
-        </button>
+          <div className="tool-select-wrap">
+            <select className="tool-select" value={drawColor} onChange={(e) => setDrawColor(e.target.value)}>
+              <option value="red">Farbe Rot</option>
+              <option value="blue">Farbe Blau</option>
+              <option value="black">Farbe Schwarz</option>
+              <option value="green">Farbe Grün</option>
+              <option value="orange">Farbe Orange</option>
+            </select>
+          </div>
+
+          <button className="tool-button" onClick={clearDrawing}>
+            <span className="tool-icon">🧽</span>
+            <span className="tool-text">Zeichnung löschen</span>
+          </button>
+        </div>
+
+        <div className="tool-group">
+          <button
+            className="tool-button danger"
+            onClick={() => {
+              localStorage.removeItem("loggedIn");
+              setLoggedIn(false);
+            }}
+          >
+            <span className="tool-icon">🚪</span>
+            <span className="tool-text">Abmelden</span>
+          </button>
+        </div>
       </div>
 
       {showTextImport && (
