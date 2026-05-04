@@ -101,6 +101,9 @@ export default function Page() {
   const [showTextImport, setShowTextImport] = useState(false);
   const [importText, setImportText] = useState("");
 
+  const [ausfuehrungVon, setAusfuehrungVon] = useState("");
+  const [ausfuehrungBis, setAusfuehrungBis] = useState("");
+
   const [drawing, setDrawing] = useState(false);
   const [drawColor, setDrawColor] = useState("red");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -139,7 +142,10 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    const hasContent = rows.some((r) => Object.values(r).some((value) => value.trim() !== ""));
+    const hasContent =
+      rows.some((r) => Object.values(r).some((value) => value.trim() !== "")) ||
+      ausfuehrungVon.trim() !== "" ||
+      ausfuehrungBis.trim() !== "";
 
     if (!loggedIn || !hasContent) return;
 
@@ -150,7 +156,7 @@ export default function Page() {
 
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [loggedIn, rows]);
+  }, [loggedIn, rows, ausfuehrungVon, ausfuehrungBis]);
 
   useEffect(() => {
     function resizeCanvas() {
@@ -605,6 +611,28 @@ export default function Page() {
           font-weight: 700;
         }
 
+        .date-range {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          border-bottom: 1px solid #2f80ed;
+        }
+
+        .date-range input {
+          height: 22px;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .date-range-print {
+          display: none;
+          height: 22px;
+          border-bottom: 1px solid #2f80ed;
+          font-size: 13px;
+          font-weight: 700;
+          line-height: 22px;
+        }
+
         .pf-logo-row {
           display: grid;
           grid-template-columns: 160px 1fr;
@@ -874,6 +902,14 @@ export default function Page() {
             display: block !important;
           }
 
+          .date-range {
+            display: none !important;
+          }
+
+          .date-range-print {
+            display: block !important;
+          }
+
           select {
             -webkit-appearance: none !important;
             appearance: none !important;
@@ -1077,7 +1113,25 @@ export default function Page() {
             </div>
             <div className="field-row">
               Tag der Ausführung/Datum
-              <input className="date-line" type="date" />
+              <div className="date-range-print">
+                {ausfuehrungVon ? formatDateDE(ausfuehrungVon) : ""}
+                {ausfuehrungVon || ausfuehrungBis ? " bis " : ""}
+                {ausfuehrungBis ? formatDateDE(ausfuehrungBis) : ""}
+              </div>
+              <div className="date-range">
+                <input
+                  className="date-line"
+                  type="date"
+                  value={ausfuehrungVon}
+                  onChange={(e) => setAusfuehrungVon(e.target.value)}
+                />
+                <input
+                  className="date-line"
+                  type="date"
+                  value={ausfuehrungBis}
+                  onChange={(e) => setAusfuehrungBis(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
