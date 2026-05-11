@@ -629,6 +629,26 @@ export default function Page() {
           border-radius: 10px;
         }
 
+        .hinweis-box {
+          position: absolute;
+          right: 18px;
+          bottom: 18px;
+          width: 250px;
+          min-height: 55px;
+          border: 2px solid #2f80ed;
+          background: #fff;
+          color: red;
+          font-size: 16px;
+          font-weight: 900;
+          line-height: 20px;
+          padding: 8px 10px;
+          text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2;
+        }
+
         .draw-canvas {
           position: absolute;
           inset: 0;
@@ -961,6 +981,15 @@ export default function Page() {
           table {
             width: 100%;
             min-width: 0;
+          }
+
+          .hinweis-box {
+            right: 8px;
+            bottom: 8px;
+            width: 230px;
+            min-height: 48px;
+            font-size: 14px;
+            line-height: 17px;
           }
 
           .copy-button {
@@ -1403,6 +1432,10 @@ export default function Page() {
             })}
           </tbody>
         </table>
+
+        <div className="hinweis-box">
+          Arbeitszeiten kleiner 8h werden mit 8h vergütet.
+        </div>
       </section>
     </main>
   );
