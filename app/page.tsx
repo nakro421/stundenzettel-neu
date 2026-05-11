@@ -286,97 +286,91 @@ export default function Page() {
       });
 
     const ws = XLSX.utils.json_to_sheet(data);
-    ws["!cols"] = [
-      { wch: 14 },
-      { wch: 24 },
-      { wch: 18 },
-      { wch: 20 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 35 },
-    ];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Stundenzettel");
     XLSX.writeFile(wb, "stundenzettel.xlsx");
   }
 
-  function getCanvasPos(e: React.PointerEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current!;
-    const rect = canvas.getBoundingClientRect();
-
-    return {
-      x: ((e.clientX - rect.left) / rect.width) * canvas.width,
-      y: ((e.clientY - rect.top) / rect.height) * canvas.height,
-    };
-  }
-
-  function startDraw(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!drawing) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-
-    isDrawingRef.current = true;
-    const pos = getCanvasPos(e);
-
-    ctx.beginPath();
-    ctx.moveTo(pos.x, pos.y);
-    ctx.strokeStyle = drawColor;
-    ctx.lineWidth = 3;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-  }
-
-  function moveDraw(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!drawing || !isDrawingRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-
-    const pos = getCanvasPos(e);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
-  }
-
-  function stopDraw() {
-    isDrawingRef.current = false;
-  }
-
-  function clearDrawing() {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-
   if (!loggedIn) {
     return (
-      <main style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
-        <div style={{ border: "1px solid #000", padding: 20, background: "#fff" }}>
-          <h2>Login</h2>
-          <input
-            type="password"
-            placeholder="Passwort"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                if ((e.target as HTMLInputElement).value === "36833") {
-                  localStorage.setItem("loggedIn", "true");
-                  setLoggedIn(true);
-                } else {
-                  alert("Falsches Passwort");
-                }
+      <main>
+        <input
+          type="password"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              if ((e.target as HTMLInputElement).value === "36833") {
+                localStorage.setItem("loggedIn", "true");
+                setLoggedIn(true);
               }
-            }}
-          />
-        </div>
+            }
+          }}
+        />
       </main>
     );
   }
 
-  return <main>DEIN RESTLICHER JSX BLEIBT UNVERÄNDERT</main>;
+  return (
+    <main>
+      <table>
+        <tbody>
+          {rows.map((r, i) => {
+            const brutto = bruttoMin(r.von, r.bis);
+            const pause = autoPause(brutto, r.vorlage);
+            const netto = Math.max(0, brutto - pause);
+
+            return (
+              <tr key={i}>
+                <td>
+                  <select value={r.bez} onChange={(e) => update(i, "bez", e.target.value)}>
+                    <option></option>
+
+                    {FUNKTIONEN.map((f) => (
+                      <option key={f}>{f}</option>
+                    ))}
+                  </select>
+                </td>
+
+                <td>
+                  <div>
+                    <select value={r.vorlage} onChange={(e) => setVorlage(i, e.target.value)}>
+                      <option value="">eigene</option>
+
+                      {ZEITEN.map((z) => (
+                        <option key={z[0]} value={z[0]}>
+                          {z[0]}
+                        </option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="time"
+                      value={r.von}
+                      onChange={(e) => update(i, "von", e.target.value)}
+                    />
+                  </div>
+                </td>
+
+                <td>
+                  <input
+                    type="time"
+                    value={r.bis}
+                    onChange={(e) => update(i, "bis", e.target.value)}
+                  />
+                </td>
+
+                <td>
+                  <input value={pause ? `${pause} min` : ""} readOnly />
+                </td>
+
+                <td>
+                  <input value={formatHours(netto)} readOnly />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </main>
+  );
 }
