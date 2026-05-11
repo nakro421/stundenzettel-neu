@@ -5,11 +5,12 @@ import * as XLSX from "xlsx";
 import { auth, db } from "../lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
-const FUNKTIONEN = ["Sakra", "Sipo", "Baustellensakra", "Bahnerder", "Bediener", "SAS", "BÜP", "HIP", "Flapo", "ZMP"];
+const FUNKTIONEN = ["Sakra", "Sipo", "Baustellensakra", "Bahnerder", "Bediener", "SAS", "BÜP", "HIP", "Flapo", "ZMP", "HFE"];
 
 const ZEITEN = [
   ["7-18 Uhr", "07:00", "18:00"],
   ["7-16 Uhr", "07:00", "16:00"],
+  ["7-16 Uhr + 30min Pause", "07:00", "16:00"],
   ["20-5 Uhr", "20:00", "05:00"],
   ["22-5 Uhr", "22:00", "05:00"],
   ["18-0:30 Uhr", "18:00", "00:30"],
@@ -31,6 +32,8 @@ type Row = {
   bemerkung: string;
 };
 
+type DrawTool = "pen" | "line" | "slash";
+
 function toMin(t: string) {
   if (!t) return 0;
   const [h, m] = t.split(":").map(Number);
@@ -44,7 +47,9 @@ function bruttoMin(von: string, bis: string) {
   return d;
 }
 
-function autoPause(min: number) {
+function autoPause(min: number, vorlage: string) {
+  if (vorlage === "7-16 Uhr + 30min Pause") return 30;
+
   if (min >= 600) return 60;
   if (min >= 540) return 45;
   if (min >= 300) return 30;
@@ -106,9 +111,12 @@ export default function Page() {
 
   const [drawing, setDrawing] = useState(false);
   const [drawColor, setDrawColor] = useState("red");
+  const [drawTool, setDrawTool] = useState<DrawTool>("pen");
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sheetRef = useRef<HTMLElement | null>(null);
   const isDrawingRef = useRef(false);
+  const drawStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const [rows, setRows] = useState<Row[]>(
     Array.from({ length: ROWS }, () => ({
@@ -254,7 +262,7 @@ export default function Page() {
       .filter((r) => r.datum || r.name || r.personalnummer || r.bez || r.von || r.bis || r.bemerkung)
       .map((r) => {
         const brutto = bruttoMin(r.von, r.bis);
-        const pause = autoPause(brutto);
+        const pause = autoPause(brutto, r.vorlage);
         const netto = Math.max(0, brutto - pause);
 
         return {
@@ -298,38 +306,86 @@ export default function Page() {
     };
   }
 
-  function startDraw(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!drawing) return;
-
+  function prepareCanvasLine() {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+    if (!canvas || !ctx) return null;
 
-    isDrawingRef.current = true;
-    const pos = getCanvasPos(e);
-
-    ctx.beginPath();
-    ctx.moveTo(pos.x, pos.y);
     ctx.strokeStyle = drawColor;
     ctx.lineWidth = 3;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
+
+    return ctx;
+  }
+
+  function startDraw(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawing) return;
+
+    const ctx = prepareCanvasLine();
+    if (!ctx) return;
+
+    isDrawingRef.current = true;
+    const pos = getCanvasPos(e);
+    drawStartRef.current = pos;
+
+    if (drawTool === "pen") {
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
   }
 
   function moveDraw(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!drawing || !isDrawingRef.current) return;
+    if (!drawing || !isDrawingRef.current || drawTool !== "pen") return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+    const ctx = prepareCanvasLine();
+    if (!ctx) return;
 
     const pos = getCanvasPos(e);
     ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
   }
 
-  function stopDraw() {
+  function stopDraw(e?: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawing || !isDrawingRef.current) {
+      isDrawingRef.current = false;
+      drawStartRef.current = null;
+      return;
+    }
+
+    const start = drawStartRef.current;
+    const ctx = prepareCanvasLine();
+
+    if (start && ctx && e && drawTool !== "pen") {
+      const end = getCanvasPos(e);
+
+      ctx.beginPath();
+
+      if (drawTool === "line") {
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+      }
+
+      if (drawTool === "slash") {
+        const minX = Math.min(start.x, end.x);
+        const maxX = Math.max(start.x, end.x);
+        const minY = Math.min(start.y, end.y);
+        const maxY = Math.max(start.y, end.y);
+
+        if (Math.abs(maxX - minX) < 8 && Math.abs(maxY - minY) < 8) {
+          ctx.moveTo(start.x - 18, start.y + 18);
+          ctx.lineTo(start.x + 18, start.y - 18);
+        } else {
+          ctx.moveTo(minX, maxY);
+          ctx.lineTo(maxX, minY);
+        }
+      }
+
+      ctx.stroke();
+    }
+
     isDrawingRef.current = false;
+    drawStartRef.current = null;
   }
 
   function clearDrawing() {
@@ -1018,6 +1074,14 @@ export default function Page() {
           </button>
 
           <div className="tool-select-wrap">
+            <select className="tool-select" value={drawTool} onChange={(e) => setDrawTool(e.target.value as DrawTool)}>
+              <option value="pen">Freihand</option>
+              <option value="line">Gerade Linie</option>
+              <option value="slash">Schrägstrich /</option>
+            </select>
+          </div>
+
+          <div className="tool-select-wrap">
             <select className="tool-select" value={drawColor} onChange={(e) => setDrawColor(e.target.value)}>
               <option value="red">Farbe Rot</option>
               <option value="blue">Farbe Blau</option>
@@ -1091,6 +1155,7 @@ export default function Page() {
           onPointerMove={moveDraw}
           onPointerUp={stopDraw}
           onPointerLeave={stopDraw}
+          onPointerCancel={stopDraw}
         />
 
         <div className="top">
@@ -1226,7 +1291,7 @@ export default function Page() {
           <tbody>
             {rows.map((r, i) => {
               const brutto = bruttoMin(r.von, r.bis);
-              const pause = autoPause(brutto);
+              const pause = autoPause(brutto, r.vorlage);
               const netto = Math.max(0, brutto - pause);
 
               return (
