@@ -29,6 +29,7 @@ type Row = {
   vorlage: string;
   von: string;
   bis: string;
+  pause: string;
   bemerkung: string;
 };
 
@@ -127,6 +128,7 @@ export default function Page() {
       vorlage: "",
       von: "",
       bis: "",
+      pause: "",
       bemerkung: "",
     }))
   );
@@ -236,9 +238,24 @@ export default function Page() {
     const found = ZEITEN.find((z) => z[0] === value);
     const copy = [...rows];
 
-    copy[i] = found
-      ? { ...copy[i], vorlage: value, von: found[1], bis: found[2] }
-      : { ...copy[i], vorlage: "" };
+    if (found) {
+      const brutto = bruttoMin(found[1], found[2]);
+      const pause = autoPause(brutto, value);
+
+      copy[i] = {
+        ...copy[i],
+        vorlage: value,
+        von: found[1],
+        bis: found[2],
+        pause: pause ? String(pause) : "",
+      };
+    } else {
+      copy[i] = {
+        ...copy[i],
+        vorlage: "",
+        pause: "",
+      };
+    }
 
     setRows(copy);
   }
@@ -262,7 +279,7 @@ export default function Page() {
       .filter((r) => r.datum || r.name || r.personalnummer || r.bez || r.von || r.bis || r.bemerkung)
       .map((r) => {
         const brutto = bruttoMin(r.von, r.bis);
-        const pause = autoPause(brutto, r.vorlage);
+        const pause = Number(r.pause || autoPause(brutto, r.vorlage));
         const netto = Math.max(0, brutto - pause);
 
         return {
@@ -1039,27 +1056,43 @@ export default function Page() {
             <span>Mitarbeiter exportieren</span>
           </button>
 
-          <label className="tool-label">
-            <span className="tool-icon">⬇️</span>
-            <span>Mitarbeiter importieren</span>
-            <input
-              type="file"
-              accept=".json"
-              hidden
-              onChange={(e) => {
+          <button
+            className="tool-button"
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".json";
+
+              input.onchange = (e: any) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
 
                 const reader = new FileReader();
                 reader.onload = () => {
-                  const data = JSON.parse(reader.result as string);
-                  saveMitarbeiter(data);
-                  alert("Mitarbeiterliste importiert und online gespeichert");
+                  try {
+                    const data = JSON.parse(reader.result as string);
+
+                    if (!Array.isArray(data)) {
+                      alert("Ungültige Datei");
+                      return;
+                    }
+
+                    saveMitarbeiter(data);
+                    alert("Mitarbeiter importiert");
+                  } catch {
+                    alert("Import fehlgeschlagen");
+                  }
                 };
+
                 reader.readAsText(file);
-              }}
-            />
-          </label>
+              };
+
+              input.click();
+            }}
+          >
+            <span className="tool-icon">⬇️</span>
+            <span>Mitarbeiter importieren</span>
+          </button>
 
           <button className="tool-button" onClick={() => setShowTextImport(!showTextImport)}>
             <span className="tool-icon">📄</span>
@@ -1291,7 +1324,7 @@ export default function Page() {
           <tbody>
             {rows.map((r, i) => {
               const brutto = bruttoMin(r.von, r.bis);
-              const pause = autoPause(brutto, r.vorlage);
+              const pause = Number(r.pause || autoPause(brutto, r.vorlage));
               const netto = Math.max(0, brutto - pause);
 
               return (
@@ -1355,7 +1388,7 @@ export default function Page() {
                   </td>
 
                   <td>
-                    <input value={pause ? `${pause} min` : ""} readOnly />
+                    <input value={r.pause} onChange={(e) => update(i, "pause", e.target.value)} placeholder="min" />
                   </td>
 
                   <td>
