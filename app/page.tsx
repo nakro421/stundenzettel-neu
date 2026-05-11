@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { auth, db } from "../lib/firebase";
+import { db } from "../lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
 const FUNKTIONEN = [
@@ -31,7 +31,10 @@ const ZEITEN = [
 
 const ROWS = 18;
 
-type Mitarbeiter = { name: string; personalnummer: string };
+type Mitarbeiter = {
+  name: string;
+  personalnummer: string;
+};
 
 type Row = {
   datum: string;
@@ -41,6 +44,7 @@ type Row = {
   vorlage: string;
   von: string;
   bis: string;
+  pauseManuell: string;
   bemerkung: string;
 };
 
@@ -52,17 +56,23 @@ function toMin(t: string) {
 
 function bruttoMin(von: string, bis: string) {
   if (!von || !bis) return 0;
+
   let d = toMin(bis) - toMin(von);
+
   if (d < 0) d += 1440;
+
   return d;
 }
 
 function autoPause(min: number, vorlage: string) {
-  if (vorlage === "7-16 Uhr + 30min Pause") return 30;
+  if (vorlage === "7-16 Uhr + 30min Pause") {
+    return 30;
+  }
 
   if (min >= 600) return 60;
   if (min >= 540) return 45;
   if (min >= 300) return 30;
+
   return 0;
 }
 
@@ -73,8 +83,11 @@ function formatHours(min: number) {
 
 function formatDateDE(date: string) {
   if (!date) return "";
+
   const [year, month, day] = date.split("-");
+
   if (!year || !month || !day) return date;
+
   return `${day}.${month}.${year}`;
 }
 
@@ -91,17 +104,24 @@ function parseMitarbeiterText(text: string): Mitarbeiter[] {
 
   text.split("\n").forEach((line) => {
     const clean = line.trim();
+
     if (!clean || !clean.includes("/")) return;
 
     const parts = clean.split("/");
+
     const personalnummer = parts.pop()?.trim() || "";
     const name = parts.join("/").trim();
 
     if (!name || !personalnummer) return;
-    list.push({ name, personalnummer });
+
+    list.push({
+      name,
+      personalnummer,
+    });
   });
 
   const unique = new Map<string, Mitarbeiter>();
+
   list.forEach((m) => {
     unique.set(`${m.name.toLowerCase()}-${m.personalnummer}`, m);
   });
@@ -111,18 +131,27 @@ function parseMitarbeiterText(text: string): Mitarbeiter[] {
 
 export default function Page() {
   const [loggedIn, setLoggedIn] = useState(false);
+
   const [mitarbeiter, setMitarbeiter] = useState<Mitarbeiter[]>([]);
+
   const [showMitarbeiterListe, setShowMitarbeiterListe] = useState(false);
+
   const [showTextImport, setShowTextImport] = useState(false);
+
   const [importText, setImportText] = useState("");
 
   const [ausfuehrungVon, setAusfuehrungVon] = useState("");
+
   const [ausfuehrungBis, setAusfuehrungBis] = useState("");
 
   const [drawing, setDrawing] = useState(false);
+
   const [drawColor, setDrawColor] = useState("red");
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
   const sheetRef = useRef<HTMLElement | null>(null);
+
   const isDrawingRef = useRef(false);
 
   const [rows, setRows] = useState<Row[]>(
@@ -134,6 +163,7 @@ export default function Page() {
       vorlage: "",
       von: "",
       bis: "",
+      pauseManuell: "",
       bemerkung: "",
     }))
   );
@@ -141,11 +171,13 @@ export default function Page() {
   useEffect(() => {
     async function loadMitarbeiter() {
       const snapshot = await getDocs(collection(db, "Mitarbeiter"));
+
       const liste = snapshot.docs
         .map((d) => d.data() as Mitarbeiter)
         .filter((m) => m.name && m.personalnummer);
 
       setMitarbeiter(liste);
+
       localStorage.setItem("mitarbeiter", JSON.stringify(liste));
     }
 
@@ -157,40 +189,28 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    const hasContent =
-      rows.some((r) => Object.values(r).some((value) => value.trim() !== "")) ||
-      ausfuehrungVon.trim() !== "" ||
-      ausfuehrungBis.trim() !== "";
-
-    if (!loggedIn || !hasContent) return;
-
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [loggedIn, rows, ausfuehrungVon, ausfuehrungBis]);
-
-  useEffect(() => {
     function resizeCanvas() {
       const canvas = canvasRef.current;
       const sheet = sheetRef.current;
+
       if (!canvas || !sheet) return;
 
       const rect = sheet.getBoundingClientRect();
+
       canvas.width = Math.round(rect.width);
       canvas.height = Math.round(rect.height);
     }
 
     resizeCanvas();
+
     window.addEventListener("resize", resizeCanvas);
+
     return () => window.removeEventListener("resize", resizeCanvas);
   }, [loggedIn]);
 
   async function saveMitarbeiter(list: Mitarbeiter[]) {
     setMitarbeiter(list);
+
     localStorage.setItem("mitarbeiter", JSON.stringify(list));
 
     for (const m of list) {
@@ -204,48 +224,77 @@ export default function Page() {
   function addMitarbeiter() {
     const name = prompt("Name des Mitarbeiters?");
     const personalnummer = prompt("Personalnummer?");
+
     if (!name || !personalnummer) return;
+
     saveMitarbeiter([...mitarbeiter, { name, personalnummer }]);
   }
 
   async function deleteMitarbeiter(name: string) {
     const m = mitarbeiter.find((x) => x.name === name);
+
     if (!m) return;
 
     await deleteDoc(doc(db, "Mitarbeiter", makeMitarbeiterId(m)));
 
     const neueListe = mitarbeiter.filter((x) => x.name !== name);
+
     setMitarbeiter(neueListe);
+
     localStorage.setItem("mitarbeiter", JSON.stringify(neueListe));
   }
 
   function update(i: number, field: keyof Row, value: string) {
     const copy = [...rows];
-    copy[i] = { ...copy[i], [field]: value };
+
+    copy[i] = {
+      ...copy[i],
+      [field]: value,
+    };
+
     setRows(copy);
   }
 
   function copyRow(i: number) {
     if (i >= rows.length - 1) return;
+
     const copy = [...rows];
+
     copy[i + 1] = { ...rows[i] };
+
     setRows(copy);
   }
 
   function selectMitarbeiter(i: number, name: string) {
     const m = mitarbeiter.find((x) => x.name === name);
+
     const copy = [...rows];
-    copy[i] = { ...copy[i], name, personalnummer: m?.personalnummer || "" };
+
+    copy[i] = {
+      ...copy[i],
+      name,
+      personalnummer: m?.personalnummer || "",
+    };
+
     setRows(copy);
   }
 
   function setVorlage(i: number, value: string) {
     const found = ZEITEN.find((z) => z[0] === value);
+
     const copy = [...rows];
 
     copy[i] = found
-      ? { ...copy[i], vorlage: value, von: found[1], bis: found[2] }
-      : { ...copy[i], vorlage: "" };
+      ? {
+          ...copy[i],
+          vorlage: value,
+          von: found[1],
+          bis: found[2],
+        }
+      : {
+          ...copy[i],
+          vorlage: "",
+        };
 
     setRows(copy);
   }
@@ -254,22 +303,41 @@ export default function Page() {
     const parsed = parseMitarbeiterText(importText);
 
     if (parsed.length === 0) {
-      alert("Keine Mitarbeiter erkannt. Format: Name / Personalnummer");
+      alert("Keine Mitarbeiter erkannt");
       return;
     }
 
     saveMitarbeiter(parsed);
+
     setImportText("");
+
     setShowTextImport(false);
-    alert(`${parsed.length} Mitarbeiter importiert und online gespeichert`);
+
+    alert(`${parsed.length} Mitarbeiter importiert`);
   }
 
   function exportExcel() {
     const data = rows
-      .filter((r) => r.datum || r.name || r.personalnummer || r.bez || r.von || r.bis || r.bemerkung)
+      .filter(
+        (r) =>
+          r.datum ||
+          r.name ||
+          r.personalnummer ||
+          r.bez ||
+          r.von ||
+          r.bis ||
+          r.bemerkung
+      )
       .map((r) => {
         const brutto = bruttoMin(r.von, r.bis);
-        const pause = autoPause(brutto, r.vorlage);
+
+        const auto = autoPause(brutto, r.vorlage);
+
+        const pause =
+          r.pauseManuell !== ""
+            ? Number(r.pauseManuell)
+            : auto;
+
         const netto = Math.max(0, brutto - pause);
 
         return {
@@ -288,83 +356,222 @@ export default function Page() {
     const ws = XLSX.utils.json_to_sheet(data);
 
     const wb = XLSX.utils.book_new();
+
     XLSX.utils.book_append_sheet(wb, ws, "Stundenzettel");
+
     XLSX.writeFile(wb, "stundenzettel.xlsx");
   }
 
   if (!loggedIn) {
     return (
-      <main>
-        <input
-          type="password"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              if ((e.target as HTMLInputElement).value === "36833") {
-                localStorage.setItem("loggedIn", "true");
-                setLoggedIn(true);
-              }
-            }
+      <main
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <div
+          style={{
+            border: "1px solid #000",
+            padding: 20,
+            background: "#fff",
           }}
-        />
+        >
+          <h2>Login</h2>
+
+          <input
+            type="password"
+            placeholder="Passwort"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (
+                  (e.target as HTMLInputElement).value === "36833"
+                ) {
+                  localStorage.setItem("loggedIn", "true");
+                  setLoggedIn(true);
+                } else {
+                  alert("Falsches Passwort");
+                }
+              }
+            }}
+          />
+        </div>
       </main>
     );
   }
 
   return (
-    <main>
-      <table>
+    <main style={{ padding: 20 }}>
+      <button onClick={exportExcel}>
+        Excel exportieren
+      </button>
+
+      <table
+        style={{
+          width: "100%",
+          marginTop: 20,
+          borderCollapse: "collapse",
+        }}
+      >
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th>Name</th>
+            <th>PersNr</th>
+            <th>Bez.</th>
+            <th>Vorlage</th>
+            <th>Von</th>
+            <th>Bis</th>
+            <th>Pause</th>
+            <th>Std</th>
+            <th>Bemerkung</th>
+          </tr>
+        </thead>
+
         <tbody>
           {rows.map((r, i) => {
             const brutto = bruttoMin(r.von, r.bis);
-            const pause = autoPause(brutto, r.vorlage);
+
+            const auto = autoPause(brutto, r.vorlage);
+
+            const pause =
+              r.pauseManuell !== ""
+                ? Number(r.pauseManuell)
+                : auto;
+
             const netto = Math.max(0, brutto - pause);
 
             return (
               <tr key={i}>
                 <td>
-                  <select value={r.bez} onChange={(e) => update(i, "bez", e.target.value)}>
-                    <option></option>
+                  <input
+                    type="date"
+                    value={r.datum}
+                    onChange={(e) =>
+                      update(i, "datum", e.target.value)
+                    }
+                  />
+                </td>
 
-                    {FUNKTIONEN.map((f) => (
-                      <option key={f}>{f}</option>
+                <td>
+                  <select
+                    value={r.name}
+                    onChange={(e) =>
+                      selectMitarbeiter(i, e.target.value)
+                    }
+                  >
+                    <option value=""></option>
+
+                    {mitarbeiter.map((m) => (
+                      <option
+                        key={`${m.name}-${m.personalnummer}`}
+                        value={m.name}
+                      >
+                        {m.name}
+                      </option>
                     ))}
                   </select>
                 </td>
 
                 <td>
-                  <div>
-                    <select value={r.vorlage} onChange={(e) => setVorlage(i, e.target.value)}>
-                      <option value="">eigene</option>
+                  <input
+                    value={r.personalnummer}
+                    readOnly
+                  />
+                </td>
 
-                      {ZEITEN.map((z) => (
-                        <option key={z[0]} value={z[0]}>
-                          {z[0]}
-                        </option>
-                      ))}
-                    </select>
+                <td>
+                  <select
+                    value={r.bez}
+                    onChange={(e) =>
+                      update(i, "bez", e.target.value)
+                    }
+                  >
+                    <option></option>
 
-                    <input
-                      type="time"
-                      value={r.von}
-                      onChange={(e) => update(i, "von", e.target.value)}
-                    />
-                  </div>
+                    {FUNKTIONEN.map((f) => (
+                      <option key={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+
+                <td>
+                  <select
+                    value={r.vorlage}
+                    onChange={(e) =>
+                      setVorlage(i, e.target.value)
+                    }
+                  >
+                    <option value="">
+                      eigene
+                    </option>
+
+                    {ZEITEN.map((z) => (
+                      <option
+                        key={z[0]}
+                        value={z[0]}
+                      >
+                        {z[0]}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+
+                <td>
+                  <input
+                    type="time"
+                    value={r.von}
+                    onChange={(e) =>
+                      update(i, "von", e.target.value)
+                    }
+                  />
                 </td>
 
                 <td>
                   <input
                     type="time"
                     value={r.bis}
-                    onChange={(e) => update(i, "bis", e.target.value)}
+                    onChange={(e) =>
+                      update(i, "bis", e.target.value)
+                    }
                   />
                 </td>
 
                 <td>
-                  <input value={pause ? `${pause} min` : ""} readOnly />
+                  <input
+                    value={pause}
+                    onChange={(e) =>
+                      update(
+                        i,
+                        "pauseManuell",
+                        e.target.value
+                      )
+                    }
+                  />
                 </td>
 
                 <td>
-                  <input value={formatHours(netto)} readOnly />
+                  <input
+                    value={formatHours(netto)}
+                    readOnly
+                  />
+                </td>
+
+                <td>
+                  <input
+                    value={r.bemerkung}
+                    onChange={(e) =>
+                      update(
+                        i,
+                        "bemerkung",
+                        e.target.value
+                      )
+                    }
+                  />
                 </td>
               </tr>
             );
